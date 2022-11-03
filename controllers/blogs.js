@@ -1,51 +1,40 @@
 const Blog = require('../models/blog.js')
 const blogRouter = require('express').Router()
 
-blogRouter.get('/', (request, response) => {
-  Blog.find({}).then((blogs) => {
-    response.json(blogs)
-  })
+blogRouter.get('/', async (request, response) => {
+  const blogs = await Blog.find({})
+  response.json(blogs)
 })
 
-blogRouter.get('/:id', (req, res, next) => {
+blogRouter.get('/:id', async (req, res) => {
   const id = req.params.id
-  Blog.findById(id)
-    .then((blog) => {
-      blog ? res.json(blog) : res.status(404).end()
-    })
-    .catch((err) => next(err))
+  const blog = await Blog.findById(id)
+  blog ? res.json(blog) : res.status(404).end()
 })
 
-blogRouter.delete('/:id', (req, res, next) => {
+blogRouter.delete('/:id', async (req, res) => {
   const id = req.params.id
-  Blog.findByIdAndDelete(id)
-    .then(() => {
-      res.status(204).end()
-    })
-    .catch((error) => next(error))
+  await Blog.findByIdAndDelete(id)
+  res.status(204).end()
 })
 
-blogRouter.post('/', (request, response) => {
+blogRouter.post('/', async (request, response) => {
   const blog = new Blog(request.body)
 
-  blog.save().then((result) => {
-    response.status(201).json(result)
-  })
+  const result = await blog.save()
+  response.status(201).json(result)
 })
 
-blogRouter.put('/:id', (req, res, next) => {
+blogRouter.put('/:id', async (req, res, next) => {
   const body = req.body
   const id = req.params.id
   const blogToAdd = { ...body, id }
-  Blog.findByIdAndUpdate(id, blogToAdd, {
+  const blogAdded = await Blog.findByIdAndUpdate(id, blogToAdd, {
     new: true,
     runValidators: true,
     context: 'query'
   })
-    .then((result) => {
-      res.json(result)
-    })
-    .catch((err) => next(err))
+  res.json(blogAdded)
 })
 
 module.exports = blogRouter

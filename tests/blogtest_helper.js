@@ -1,6 +1,6 @@
-const listHelper = require('../utils/list_helper')
+const Blog = require('../models/blog')
 
-const blogs = [
+const initialBlogs = [
   {
     _id: '5a422a851b54a676234d17f7',
     title: 'React patterns',
@@ -51,43 +51,9 @@ const blogs = [
   }
 ]
 
-const mostLikeBlog = {
-  _id: '5a422b3a1b54a676234d17f9',
-  title: 'Canonical string reduction',
-  author: 'Edsger W. Dijkstra',
-  url: 'http://www.cs.utexas.edu/~EWD/transcriptions/EWD08xx/EWD808.html',
-  likes: 12,
-  __v: 0
+const getBlogsFromDB = async () => {
+  const blogs = await Blog.find({})
+  return blogs.map((blog) => blog.toJSON())
 }
 
-describe('total likes', () => {
-  test('when list has no blogs, return 0', () => {
-    const result = listHelper.totalLikes([])
-    expect(result).toBe(0)
-  })
-
-  test('when inserted other than an array returns null', () => {
-    const result = listHelper.totalLikes(98)
-    expect(result).toBe(null)
-  })
-
-  test('when list has blogs, calculate correct value', () => {
-    const result = listHelper.totalLikes(blogs)
-    expect(result).toBe(36)
-  })
-})
-
-describe('favoriteBlog', () => {
-  test('only works with arrays', () => {
-    const result = listHelper.favoriteBlog('asdasd')
-    expect(result).toEqual(null)
-  })
-  test('when provided empty array returns null', () => {
-    const result = listHelper.favoriteBlog([])
-    expect(result).toEqual(null)
-  })
-  test('when provided a blog array works correctly', () => {
-    const result = listHelper.favoriteBlog(blogs)
-    expect(result).toEqual(mostLikeBlog)
-  })
-})
+module.exports = { initialBlogs, getBlogsFromDB }
