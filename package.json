@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "cross-env NODE_ENV=production node index.js",
+    "dev": "cross-env NODE_ENV=development nodemon index.js",
+    "test": "cross-env NODE_ENV=test jest --verbose --runInBand",
+    "twatch": "jest --watch"
   },
   "keywords": [],
   "author": "",
@@ -20,9 +21,21 @@
     "standard": "17.0.0"
   },
   "devDependencies": {
-    "nodemon": "2.0.20"
+    "cross-env": "^7.0.3",
+    "jest": "29.2.2",
+    "nodemon": "2.0.20",
+    "supertest": "^6.3.1"
   },
   "eslintConfig": {
-    "extends": "./node_modules/standard/eslintrc.json"
+    "extends": "./node_modules/standard/eslintrc.json",
+    "env": {
+      "commonjs": true,
+      "es2021": true,
+      "node": true,
+      "jest": true
+    }
+  },
+  "jest": {
+    "testEnvironment": "node"
   }
 }
