@@ -4,14 +4,39 @@ const mongoose = require('mongoose')
 
 const api = supertest(app)
 const Blog = require('../models/blog')
+const User = require('../models/user')
+
 const helper = require('./blogtest_helper')
 
-beforeEach(async () => {
-  await Blog.deleteMany({})
+let token = 'bearer '
 
-  const blogsArray = helper.initialBlogs.map((blog) => new Blog(blog))
-  const blogsPromisesArray = blogsArray.map((blog) => blog.save())
-  await Promise.all(blogsPromisesArray)
+beforeAll(async () => {
+  await Blog.deleteMany({})
+  await User.deleteMany({})
+
+  const newUser = {
+    username: 'root',
+    name: 'Root User',
+    password: 'sekret'
+  }
+
+  const testLoginUser = {
+    username: 'root',
+    password: 'sekret'
+  }
+
+  await api.post('/api/users').send(newUser).expect(201)
+  const loginInfo = await api.post('/api/login').send(testLoginUser).expect(200)
+  token += loginInfo.body.token
+  console.log(token)
+
+  const promisesArr = helper.initialBlogs.map(async (newBlog) => {
+    await api.post('/api/blogs').send(newBlog).set({ authorization: token })
+  })
+  await Promise.all(promisesArr)
+
+  const blogsAtEnd = await helper.getBlogsFromDB()
+  expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length)
 })
 
 describe('blogs', () => {
@@ -20,17 +45,6 @@ describe('blogs', () => {
       .get('/api/blogs')
       .expect(200)
       .expect('Content-Type', /application\/json/)
-  })
-
-  test('are returned correctly', async () => {
-    const blogs = await helper.getBlogsFromDB()
-    expect(blogs).toHaveLength(helper.initialBlogs.length)
-  })
-
-  test('contain a specific blog uploaded', async () => {
-    const response = await api.get('/api/blogs')
-    const titles = response.body.map((blog) => blog.title)
-    expect(titles).toContain(helper.initialBlogs[0].title)
   })
 })
 
@@ -46,6 +60,7 @@ describe('addition of a blog', () => {
     await api
       .post('/api/blogs')
       .send(newBlog)
+      .set({ authorization: token })
       .expect(201)
       .expect('Content-Type', /application\/json/)
 
@@ -63,40 +78,119 @@ describe('addition of a blog', () => {
       likes: 0
     }
 
-    await api.post('/api/blogs').send(newBlog).expect(400)
+    await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .set({ authorization: token })
+      .expect(400)
+  })
+
+  test('cannot be done if not valid token', async () => {
+    const newBlog = {
+      title: 'Lets go',
+      author: 'Valentin Gonzalez Trapaga',
+      url: 'http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html',
+      likes: 0
+    }
+
+    await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .set({ authorization: 'qwe123124asda' })
+      .expect(400)
   })
 })
 
 describe('deletion of a blog', () => {
-  test('can be done if provided right id', async () => {
-    const blogs = await helper.getBlogsFromDB()
-    const ids = blogs.map((blog) => blog.id)
+  beforeEach(async () => {
+    const newBlog = {
+      title: 'Lets go',
+      author: 'Valentin Gonzalez Trapaga',
+      url: 'http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html',
+      likes: 0
+    }
 
-    await api.delete(`/api/blogs/${ids[0]}`).expect(204)
+    await api.post('/api/blogs').send(newBlog).set({ authorization: token })
+  })
+  test('succeeds if provided right id and token', async () => {
+    const blogs = await helper.getBlogsFromDB()
+    const blog = await Blog.findOne({ title: 'Lets go' })
+
+    await api
+      .delete(`/api/blogs/${blog.id}`)
+      .set({ authorization: token })
+      .expect(200)
     const blogsAtEnd = await helper.getBlogsFromDB()
     expect(blogsAtEnd).toHaveLength(blogs.length - 1)
   })
 
   test('cannot be done if provided wrong id', async () => {
-    await api.delete('/api/blogs/1234').expect(400)
+    await api
+      .delete('/api/blogs/1234')
+      .set({ authorization: token })
+      .expect(400)
+  })
+
+  test('cannot be done if provided wrong token', async () => {
+    const blog = await Blog.findOne({ title: 'Lets go' })
+
+    await api
+      .delete(`/api/blogs/${blog.id}`)
+      .set({ authorization: 'bearer 12312312412512' })
+      .expect(400)
   })
 })
 
 describe('updation of a blog', () => {
-  test('cannot be done if id is invalid', async () => {
+  const newBlog = {
+    title: 'Lets go',
+    author: 'Valentin Gonzalez Trapaga',
+    url: 'http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html',
+    likes: 0
+  }
+  beforeEach(async () => {
+    await api.post('/api/blogs').send(newBlog).set({ authorization: token })
+  })
+
+  test('fails if id is invalid', async () => {
     await api.put('/api/blogs/1234').expect(400)
   })
 
-  test('can be done if id is valid', async () => {
-    const blogs = await helper.getBlogsFromDB()
-    expect(blogs[0].likes).not.toContain(650)
+  test('fails if token is invalid', async () => {
+    const blog = await Blog.findOne({ title: 'Lets go' })
 
-    const updatedBlog = { ...blogs[0], likes: 650 }
-    console.log(updatedBlog)
-    await api.put(`/api/blogs/${blogs[0].id}`).send(updatedBlog).expect(200)
+    const updatedBlog = {
+      title: 'Trying to update the blog',
+      author: 'Valentin Gonzalez Trapaga',
+      url: 'http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html',
+      likes: 0
+    }
 
-    const blogsAtEnd = await helper.getBlogsFromDB()
-    expect(blogsAtEnd[0].likes).toBe(650)
+    await api
+      .put(`/api/blogs/${blog.id}`)
+      .send(updatedBlog)
+      .set({ authorization: 'bearer 123125412312' })
+      .expect(400)
+  })
+
+  test('succeeds if id and token is valid', async () => {
+    const blog = await Blog.findOne({ title: 'Lets go' })
+
+    const updatedBlog = {
+      title: 'Updating the blog...',
+      author: 'Valentin Gonzalez Trapaga',
+      url: 'http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html',
+      likes: 0
+    }
+
+    await api
+      .put(`/api/blogs/${blog.id}`)
+      .send(updatedBlog)
+      .set({ authorization: token })
+      .expect(200)
+
+    const finalBlog = await Blog.findOne({ title: updatedBlog.title })
+    expect(finalBlog.title).toContain('Updating the blog...')
   })
 })
 

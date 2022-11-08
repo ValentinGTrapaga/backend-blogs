@@ -85,6 +85,37 @@ describe('when there is one user in db', () => {
   })
 })
 
+describe('creating one user in db', () => {
+  const newUser = {
+    username: 'root',
+    name: 'Root User',
+    password: 'sekret'
+  }
+
+  const testLoginUser = {
+    username: 'root',
+    password: 'sekret'
+  }
+
+  const wrongUser = {
+    username: 'root',
+    password: 'secret'
+  }
+
+  beforeEach(async () => {
+    await User.deleteMany({})
+
+    await api.post('/api/users').send(newUser).expect(201)
+  })
+  test('login suceeds if correct data is sent', async () => {
+    await api.post('/api/login').send(testLoginUser).expect(200)
+  })
+
+  test('login fails if incorrect data is sent', async () => {
+    await api.post('/api/login').send(wrongUser).expect(401)
+  })
+})
+
 afterAll(() => {
   mongoose.connection.close()
 })
