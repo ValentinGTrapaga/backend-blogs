@@ -2,7 +2,10 @@ const express = require('express')
 const cors = require('cors')
 const morgan = require('morgan')
 require('express-async-errors')
+
 const blogRouter = require('./controllers/blogs')
+const usersRouter = require('./controllers/users')
+
 const errorHandler = require('./utils/errorHandler')
 const unknownEndpoint = require('./utils/unknownEndpoint')
 
@@ -25,6 +28,7 @@ app.get('/', (req, res) => {
 })
 
 app.use('/api/blogs', blogRouter)
+app.use('/api/users', usersRouter)
 
 app.use(unknownEndpoint)
 app.use(errorHandler)
