@@ -10,7 +10,7 @@ const helper = require('./blogtest_helper')
 
 let token = 'bearer '
 
-beforeEach(async () => {
+beforeAll(async () => {
   await Blog.deleteMany({})
   await User.deleteMany({})
 
@@ -25,18 +25,24 @@ beforeEach(async () => {
     password: 'sekret'
   }
 
+  const blogAtBeginning = await helper.getBlogsFromDB()
+  console.log('blogAtBeginning', blogAtBeginning)
+  expect(blogAtBeginning).toHaveLength(0)
+
   await api.post('/api/users').send(newUser).expect(201)
   const loginInfo = await api.post('/api/login').send(testLoginUser).expect(200)
   token += loginInfo.body.token
-  console.log(token)
 
   const promisesArr = helper.initialBlogs.map(async (newBlog) => {
-    await api.post('/api/blogs').send(newBlog).set({ authorization: token })
+    return await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .set('Authorization', token)
   })
   await Promise.all(promisesArr)
 
-  const blogsAtEnd = await helper.getBlogsFromDB()
-  expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length)
+  const blogsFinals = await helper.getBlogsFromDB()
+  expect(blogsFinals).toHaveLength(helper.initialBlogs.length)
 })
 
 describe('blogs', () => {
@@ -148,6 +154,7 @@ describe('updation of a blog', () => {
     url: 'http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html',
     likes: 0
   }
+
   beforeEach(async () => {
     await api.post('/api/blogs').send(newBlog).set({ authorization: token })
   })
