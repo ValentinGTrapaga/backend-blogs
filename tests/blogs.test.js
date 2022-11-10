@@ -10,7 +10,7 @@ const helper = require('./blogtest_helper')
 
 let token = 'bearer '
 
-beforeAll(async () => {
+beforeEach(async () => {
   await Blog.deleteMany({})
   await User.deleteMany({})
 
